@@ -15,7 +15,7 @@ private:
 public:
     YFESP32HardwareSerial(HardwareSerial* serial, int rxPin, int txPin) : _serial(serial), _rxPin(rxPin), _txPin(txPin){}
     void begin(unsigned long baud) override {
-        _serial->begin(baud, _rxPin, _txPin);
+        _serial->begin(baud, SERIAL_8N1, _rxPin, _txPin);
     }
     uint8_t getData() override {
         uint8_t c;
