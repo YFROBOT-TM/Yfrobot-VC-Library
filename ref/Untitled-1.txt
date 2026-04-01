@@ -1,0 +1,82 @@
+#include <memory> // 引入智能指针支持
+
+class YFVCLib_AVR {
+public:
+    enum SerialType { SOFTWARE, HARDWARE };
+    
+    YFVCLib_AVR(SerialType type, uint8_t rx, uint8_t tx);
+    void begin(unsigned long baud);
+    uint8_t getData();
+
+private:
+    SerialType serialType;
+    std::unique_ptr<SoftwareSerial> softwareSerial;
+    HardwareSerial *hardwareSerial = &Serial; // 默认硬件串口
+
+    uint8_t processSerialData(); // 抽取处理串口数据的逻辑
+};
+
+YFVCLib_AVR::YFVCLib_AVR(SerialType type, uint8_t rx, uint8_t tx) {
+    serialType = type;
+    if (type == SerialType::SOFTWARE) {
+        softwareSerial = std::make_unique<SoftwareSerial>(rx, tx);
+    }
+}
+
+void YFVCLib_AVR::begin(unsigned long baud) {
+    if (serialType == SerialType::SOFTWARE) {
+        softwareSerial->begin(baud);
+    } else {
+        hardwareSerial->begin(baud);
+    }
+}
+
+uint8_t YFVCLib_AVR::getData() {
+    uint8_t c;
+    static uint8_t inBuf[3];
+    static uint8_t offset = 0;
+    static uint32_t checksum = 0;
+    static enum _serial_state { IDLE, HEADER_5A } c_state = IDLE;
+
+    if (serialType == SerialType::SOFTWARE) {
+        c = processSerialData();
+    } else {
+        c = processSerialData(); // 与SOFTWARE分支共享相同逻辑
+    }
+
+    if (c != 0) {
+        return c; // 如果处理过程中返回有效数据，则直接返回
+    }
+
+    // 未接收到有效数据，返回默认值
+    return 0x01;
+}
+
+uint8_t YFVCLib_AVR::processSerialData() {
+    uint8_t c = 0;
+    if (serialType == SerialType::SOFTWARE && softwareSerial->available()) {
+        // 处理SOFTWARE串口数据
+        c = softwareSerial->read();
+    } else if (hardwareSerial->available()) {
+        // 处理HARDWARE串口数据
+        c = hardwareSerial->read();
+    }
+
+    if (c_state == IDLE) {
+        if (c == 0x5A) {
+            checksum = c;
+            c_state = HEADER_5A;
+            offset = 0;
+        }
+    } else if (c_state == HEADER_5A && offset < 3) {
+        checksum += c;
+        inBuf[offset] = c;
+        offset++;
+    } else if (c_state == HEADER_5A && offset >= 3) {
+        if ((checksum & 0xFF) == c) {
+            return inBuf[0]; // 返回指令值
+        }
+        c_state = IDLE;
+    }
+    return 0; // 默认返回0，表示未处理到有效数据
+}
