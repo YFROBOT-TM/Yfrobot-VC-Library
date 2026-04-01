@@ -1,0 +1,58 @@
+# Arduino IDE
+.DS_Store
+Thumbs.db
+
+# Build files
+*.o
+*.obj
+*.a
+*.elf
+*.hex
+*.bin
+*.eep
+*.lss
+.map
+.sym
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Backup files
+*.bak
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+
+# External dependencies
+external/
+
+# Ref folder (legacy code)
+ref/
+
+# Old examples
+examples/vc/
+examples/vc_h/
+examples/yfrobot_voice_control_ESPONE_library/
+
+# Old README
+README.txt

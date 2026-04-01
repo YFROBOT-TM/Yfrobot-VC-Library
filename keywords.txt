@@ -1,17 +1,22 @@
 #######################################
-# Syntax Coloring Map For TaskManager
+# Syntax Coloring Map For YFrobot VC Library
 #######################################
 
 #######################################
 # Datatypes (KEYWORD1)
 #######################################
 
-YFVClib	KEYWORD1
+SerialBaseVC	KEYWORD1
+YFESP32HardwareSerial	KEYWORD1
+UnoHardwareSerial	KEYWORD1
+UnoSoftwareSerial	KEYWORD1
+YFMbSoftwareSerial	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
 
+begin	KEYWORD2
 getData	KEYWORD2
 
 #######################################
