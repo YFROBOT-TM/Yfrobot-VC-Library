@@ -1,10 +1,10 @@
 /*
-  YFrobot VC Library - ESP32 with OLED Example
-  
-  This example demonstrates voice control with OLED display.
-  
-  Hardware Connections:
-  Voice Module    ESP32    OLED (SSD1306)
+  YFrobot VC Library - ESP32 搭配 OLED 示例
+
+  本示例演示带 OLED 显示的语音控制。
+
+  硬件连接：
+  语音模块        ESP32    OLED (SSD1306)
   -----------    ----    --------------
   VCC          3.3V/5V  VCC
   GND          GND      GND
@@ -12,24 +12,24 @@
   RX           GPIO17   -
   -            GPIO21   SDA
   -            GPIO22   SCL
-  
-  Dependencies:
-  - U8g2 Library (install via Library Manager)
-  
-  Created: 2024-01-20
-  Author: YFROBOT
-  License: MIT
+
+  依赖库：
+  - U8g2 库（可通过库管理器安装）
+
+  创建时间：2024-01-20
+  作者：YFROBOT
+  许可证：MIT
 */
 
 #include <YFVCLib.h>
 #include <U8g2lib.h>
 
-const int VC_RX = 16; // ESP32 RX pin
-const int VC_TX = 17; // ESP32 TX pin
-const int LED_PIN = 2; // Built-in LED
+const int VC_RX = 16; // ESP32 的 RX 引脚
+const int VC_TX = 17; // ESP32 的 TX 引脚
+const int LED_PIN = 2; // 板载 LED
 
 YFESP32HardwareSerial yfvc(&Serial2, VC_RX, VC_TX);
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* 时钟=*/ SCL, /* 数据=*/ SDA, /* 复位=*/ U8X8_PIN_NONE);
 
 String lastCommand = "Waiting...";
 
