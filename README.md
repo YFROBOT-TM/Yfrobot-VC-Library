@@ -3,136 +3,103 @@
 [![Arduino Library Manager](https://img.shields.io/badge/Arduino-Library%20Manager-blue)](https://www.arduino.cc/reference/en/libraries/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Arduino library for YFrobot offline voice recognition modules. Provides serial communication adapters for multiple platforms including AVR, ESP32, and micro:bit.
+Arduino library for YFrobot offline voice modules. It supports both voice command recognition input and V1.0.9 serial broadcast output on AVR, ESP32, RP2040/Pico, SAMD, and micro:bit compatible platforms.
 
 ## Features
 
-- **Multi-platform support**: AVR, ESP32, SAMD, micro:bit
-- **Hardware & Software Serial**: Flexible serial communication options
-- **Easy to use**: Simple API with just two methods
-- **Robust protocol**: Built-in checksum verification for reliable data transmission
-- **Lightweight**: Minimal memory footprint
+- Voice recognition frame parsing with checksum verification
+- Serial broadcast protocol V1.0.9 output helpers
+- AVR hardware serial and software serial support
+- ESP32 hardware serial support with configurable pins
+- RP2040 / Raspberry Pi Pico hardware serial support
+- Ready-to-run recognition and broadcast examples
 
 ## Installation
 
 ### Arduino Library Manager
-1. Open Arduino IDE
-2. Go to **Sketch** -> **Include Library** -> **Manage Libraries**
-3. Search for "YFrobot VC Library"
-4. Click **Install**
+
+1. Open Arduino IDE.
+2. Go to **Sketch** -> **Include Library** -> **Manage Libraries**.
+3. Search for `YFrobot VC Library`.
+4. Click **Install**.
 
 ### Manual Installation
-1. Download the latest release from [GitHub Releases](https://github.com/yfrobot/YFrobot-VC-Library/releases)
-2. Extract the ZIP file
-3. Copy the `Yfrobot-VC-Library` folder to your Arduino `libraries` folder
-   - Windows: `Documents/Arduino/libraries/`
-   - macOS: `~/Documents/Arduino/libraries/`
-   - Linux: `~/Arduino/libraries/`
-4. Restart Arduino IDE
 
-## Hardware Connections
+1. Download the latest release from [GitHub Releases](https://github.com/yfrobot/YFrobot-VC-Library/releases).
+2. Extract the ZIP file.
+3. Copy the `Yfrobot-VC-Library` folder to your Arduino `libraries` folder.
+4. Restart Arduino IDE.
+
+## Wiring
 
 ### ESP32
-```
+
+```text
 Voice Module    ESP32
 -----------    -----
-VCC          3.3V/5V
-GND          GND
-TX           RX (e.g., GPIO16)
-RX           TX (e.g., GPIO17)
+VCC            3.3V/5V
+GND            GND
+TX             GPIO16 (RX)
+RX             GPIO17 (TX)
 ```
 
-### Arduino Uno (Software Serial)
-```
+### Arduino Uno SoftwareSerial
+
+```text
 Voice Module    Arduino Uno
------------    ----------
-VCC          5V
-GND          GND
-TX           RX (e.g., D11)
-RX           TX (e.g., D10)
+-----------    -----------
+VCC            5V
+GND            GND
+TX             D11 (RX)
+RX             D10 (TX)
 ```
 
-### Arduino Uno (Hardware Serial)
-```
+### Arduino Uno HardwareSerial
+
+```text
 Voice Module    Arduino Uno
------------    ----------
-VCC          5V
-GND          GND
-TX           RX (D0)
-RX           TX (D1)
+-----------    -----------
+VCC            5V
+GND            GND
+TX             D0 (RX)
+RX             D1 (TX)
 ```
+
+### Raspberry Pi Pico
+
+```text
+Voice Module    Raspberry Pi Pico
+-----------    ------------------
+VCC            3.3V/5V
+GND            GND
+TX             Pico RX (for example GPIO9)
+RX             Pico TX (for example GPIO8)
+```
+
+The exact Pico UART pins can differ between Arduino cores and remapping settings. The provided examples use `Serial1` with configurable pins.
+
+Example:
+
+```cpp
+YFRP2040HardwareSerial yfvc(&Serial1, 9, 8); // RX, TX
+```
+
+This constructor style is intended for RP2040 cores that support `Serial1.setRX(pin)` and `Serial1.setTX(pin)` before `begin()`.
 
 ## Quick Start
 
-### ESP32 Example
+### Recognition Example
 
 ```cpp
 #include <YFVCLib.h>
 
-const int VC_RX = 16; // ESP32 RX pin
-const int VC_TX = 17; // ESP32 TX pin
+const int VC_RX = 16;
+const int VC_TX = 17;
 
 YFESP32HardwareSerial yfvc(&Serial2, VC_RX, VC_TX);
 
 void setup() {
   Serial.begin(115200);
-  yfvc.begin(9600); // Match voice module baud rate
-  Serial.println("YF Voice Module Demo");
-}
-
-void loop() {
-  uint8_t cmd = yfvc.getData();
-  if (cmd != 0x01) { // 0x01 = no valid data
-    Serial.print("Voice cmd: ");
-    Serial.println(cmd);
-    
-    // Handle commands
-    switch(cmd) {
-      case 2:
-        Serial.println("Turn on LED");
-        break;
-      case 3:
-        Serial.println("Turn off LED");
-        break;
-    }
-  }
-  delay(10);
-}
-```
-
-### Arduino Uno (Software Serial)
-
-```cpp
-#include <YFVCLib.h>
-#include <SoftwareSerial.h>
-
-SoftwareSerial softSerial(11, 10); // RX, TX
-UnoSoftwareSerial yfvc(&softSerial);
-
-void setup() {
-  Serial.begin(9600);
-  yfvc.begin(9600);
-  Serial.println("YF Voice Module Demo");
-}
-
-void loop() {
-  uint8_t cmd = yfvc.getData();
-  if (cmd != 0x01) {
-    Serial.print("Voice cmd: ");
-    Serial.println(cmd);
-  }
-}
-```
-
-### Arduino Uno (Hardware Serial)
-
-```cpp
-#include <YFVCLib.h>
-
-UnoHardwareSerial yfvc(&Serial);
-
-void setup() {
-  Serial.begin(9600);
   yfvc.begin(9600);
 }
 
@@ -145,128 +112,154 @@ void loop() {
 }
 ```
 
-## API Reference
+### Broadcast Example
 
-### Classes
-
-#### `YFESP32HardwareSerial` (ESP32)
-ESP32 hardware serial with configurable RX/TX pins.
-
-**Constructor:**
 ```cpp
-YFESP32HardwareSerial(HardwareSerial* serial, int rxPin, int txPin)
+#include <YFVCLib.h>
+
+YFESP32HardwareSerial yfvc(&Serial2, 16, 17);
+
+void setup() {
+  yfvc.begin(9600);
+
+  yfvc.broadcastTemperature(21.15);    // 21.15
+  delay(500);
+  yfvc.broadcastHumidity(30);          // 30%
+  delay(500);
+  yfvc.broadcastDate(2026, 4, 10, 5);  // 2026-04-10, week 5
+  delay(500);
+  yfvc.broadcastTime(11, 18);          // 11:18
+}
+
+void loop() {
+}
 ```
 
-**Parameters:**
-- `serial`: Pointer to HardwareSerial object (e.g., `&Serial1`, `&Serial2`)
-- `rxPin`: RX pin number
-- `txPin`: TX pin number
+## API
 
-#### `UnoHardwareSerial` (AVR)
-Arduino hardware serial.
+### Transport Classes
 
-**Constructor:**
-```cpp
-UnoHardwareSerial(HardwareSerial* serial)
+- `YFESP32HardwareSerial(HardwareSerial* serial, int rxPin, int txPin)`
+- `UnoHardwareSerial(HardwareSerial* serial)`
+- `UnoSoftwareSerial(SoftwareSerial* serial)`
+
+### Common Methods
+
+- `begin(unsigned long baud)`
+- `getData()`
+- `sendProtocolCommand(uint8_t command, const uint8_t* payload = NULL, size_t payloadLength = 0)`
+
+### Broadcast Helpers
+
+- `broadcastTemperature(double value)`
+- `broadcastTemperatureParts(uint8_t integerPart, uint8_t decimal1 = 0, uint8_t decimal2 = 0)`
+- `broadcastHumidity(uint8_t humidityPercent)`
+- `broadcastDate(uint16_t year, uint8_t month, uint8_t day, uint8_t week)`
+- `broadcastTime(uint8_t hour, uint8_t minute)`
+- `broadcastTime(const tm& timeInfo)`
+- `broadcastTime(rtcDateTime)`
+- `broadcastHour(uint8_t hour)`
+- `broadcastDistance(uint32_t distanceValue)`
+- `broadcastNumber(uint32_t numberValue)`
+- `broadcastDecimal(double value)`
+- `broadcastDecimalParts(uint32_t integerPart, uint8_t decimal1, uint8_t decimal2)`
+- `playFixedVoice(YFVCFixedVoice voice)`
+- `startCountdown10s()`
+- `playPresetAudio()`
+
+`broadcastTemperature(15.51)` and `broadcastDecimal(18.21)` automatically split the value into integer part plus two decimal digits before sending the protocol frame.
+
+`broadcastTime(...)` can be used with:
+
+- Hour/minute integers such as `broadcastTime(11, 18)`
+- Standard `struct tm`
+- Common RTC objects that provide `hour()` and `minute()` methods, such as RTClib `DateTime`
+
+### Fixed Voice IDs
+
+`YFVCFixedVoice` maps to protocol commands `0x09` to `0x19`, including:
+
+- `YFVC_FIXED_TEMPERATURE_PREFIX`
+- `YFVC_FIXED_DEGREE`
+- `YFVC_FIXED_HUMIDITY_PREFIX`
+- `YFVC_FIXED_CURRENT_DISTANCE`
+- `YFVC_FIXED_MILLIMETER`
+- `YFVC_FIXED_CENTIMETER`
+- `YFVC_FIXED_METER`
+- `YFVC_FIXED_PRESET_AUDIO`
+
+## Protocol Summary
+
+### Recognition Input Frame
+
+The module sends recognition data as:
+
+```text
+5A CMD DATA1 DATA2 CHECKSUM
 ```
 
-**Parameters:**
-- `serial`: Pointer to HardwareSerial object (e.g., `&Serial`)
+`CHECKSUM` is the low 8 bits of the sum of the first four bytes.
 
-#### `UnoSoftwareSerial` (AVR)
-Arduino software serial.
+### Broadcast Output Frame
 
-**Constructor:**
-```cpp
-UnoSoftwareSerial(SoftwareSerial* serial)
+The controller sends broadcast commands as:
+
+```text
+AA 55 CMD PAYLOAD... 55 AA
 ```
 
-**Parameters:**
-- `serial`: Pointer to SoftwareSerial object
+Examples:
 
-### Methods
+- Temperature: `AA 55 01 temp_int dec1 dec2 55 AA`
+- Humidity: `AA 55 02 humidity 55 AA`
+- Date: `AA 55 03 y1 y2 y3 y4 month day week 55 AA`
+- Time: `AA 55 04 hour minute 55 AA`
+- Integer: `AA 55 07 b0 b1 b2 b3 55 AA`
+- Decimal: `AA 55 08 b0 b1 b2 b3 dec1 dec2 55 AA`
 
-#### `begin(unsigned long baud)`
-Initialize serial communication.
-
-**Parameters:**
-- `baud`: Baud rate (e.g., 9600, 115200)
-
-#### `getData()`
-Read voice command from serial port.
-
-**Returns:**
-- `uint8_t`: Command value
-  - `0x01`: No valid data received
-  - Other values: Voice command code (refer to your voice module documentation)
-
-## Protocol Details
-
-The voice module sends data in the following format:
-
-| Byte | Description |
-|------|-------------|
-| 1    | Header (0x5A) |
-| 2    | Command code |
-| 3    | Data byte 1 |
-| 4    | Data byte 2 |
-| 5    | Checksum (sum of bytes 1-4, lower 8 bits) |
-
-The library automatically handles protocol parsing and checksum verification.
+For distance, integer, and decimal integer parts, the 32-bit value is little-endian: low byte first, high byte last.
 
 ## Examples
 
-The library includes several examples:
-- `ESP32_Basic`: Basic ESP32 usage
-- `ESP32_OLED`: ESP32 with OLED display
-- `AVR_SoftwareSerial`: Arduino Uno with software serial
-- `AVR_HardwareSerial`: Arduino Uno with hardware serial
+- `ESP32_Basic`: voice recognition input on ESP32
+- `ESP32_OLED`: voice recognition with OLED display
+- `AVR_SoftwareSerial`: voice recognition input on Arduino Uno
+- `AVR_HardwareSerial`: hardware serial recognition example
+- `ESP32_BroadcastProtocol`: serial broadcast protocol demo for ESP32
+- `AVR_BroadcastProtocol`: serial broadcast protocol demo for AVR
+- `Pico_Recognition`: voice recognition input on Raspberry Pi Pico
+- `Pico_BroadcastProtocol`: serial broadcast protocol demo for Raspberry Pi Pico
 
-Open them in Arduino IDE via **File** -> **Examples** -> **YFrobot VC Library**.
+Open them from Arduino IDE via **File** -> **Examples** -> **YFrobot VC Library**.
 
 ## Troubleshooting
 
-### No data received
-- Check wiring (TX/RX should be crossed)
-- Verify baud rate matches voice module setting
-- Ensure common ground connection
+### Recognition does not work
 
-### Garbled data
-- Check baud rate settings
-- Verify RX/TX pin assignments
-- Try different baud rates (9600, 115200)
+- Make sure TX and RX are crossed.
+- Confirm the module baud rate matches `begin(...)`.
+- Check power and common ground.
 
-### ESP32 issues
-- Ensure correct Serial port (Serial1, Serial2, etc.)
-- Verify pin numbers are valid for your ESP32 board
-- Check that pins are not used by other peripherals
+### Broadcast does not work
 
-## License
-
-This library is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-- Website: [www.yfrobot.com.cn](https://www.yfrobot.com.cn)
-- GitHub Issues: [Report issues here](https://github.com/yfrobot/YFrobot-VC-Library/issues)
+- Confirm the module firmware supports protocol table V1.0.9.
+- Verify the frame bytes with a serial analyzer if needed.
+- Make sure the payload ranges are valid, such as month `1-12` and decimal digits `0-9`.
 
 ## Changelog
 
+### Version 1.1.0 (2026-04-13)
+
+- Added serial broadcast protocol V1.0.9 helper APIs
+- Added AVR and ESP32 broadcast protocol examples
+- Updated documentation for recognition and broadcast usage
+
 ### Version 1.0.0 (2024-01-20)
+
 - Initial release
 - Support for AVR, ESP32, and micro:bit platforms
-- Hardware and software serial implementations
-- Built-in checksum verification
+- Hardware and software serial recognition support
 
-## Credits
+## License
 
-Developed by YFROBOT
-
-## Acknowledgments
-
-- Based on the U8g2 library for OLED support
-- Inspired by Arduino Serial examples
+MIT License. See [LICENSE](LICENSE).

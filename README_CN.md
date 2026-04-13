@@ -3,270 +3,268 @@
 [![Arduino Library Manager](https://img.shields.io/badge/Arduino-Library%20Manager-blue)](https://www.arduino.cc/reference/en/libraries/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-用于 YFrobot 离线语音识别模块的 Arduino 库。提供多种平台的串口通信适配器，包括 AVR、ESP32 和 micro:bit。
+YFrobot 离线语音模块 Arduino 库，支持两类能力：
+
+- 语音识别结果接收与解析
+- 串口播报协议 V1.0.9 指令发送
+
+当前支持 AVR、ESP32、RP2040/Pico、SAMD 与 micro:bit 兼容平台。
 
 ## 功能特性
 
-- **多平台支持**：AVR、ESP32、SAMD、micro:bit
-- **硬件与软件串口**：灵活的串口通信选项
-- **易于使用**：只需两个方法的简单 API
-- **健壮的协议**：内置校验和验证，确保数据传输可靠
-- **轻量级**：最小的内存占用
+- 支持语音识别串口帧解析与校验
+- 支持 V1.0.9 播报协议封装
+- 支持 AVR 硬件串口与软件串口
+- 支持 ESP32 可配置引脚的硬件串口
+- 支持 RP2040 / Raspberry Pi Pico 硬件串口
+- 提供识别示例与播报示例，方便快速测试
 
 ## 安装
 
-### Arduino 库管理器
-1. 打开 Arduino IDE
-2. 进入 **工具** -> **管理库** (或 **Sketch** -> **Include Library** -> **Manage Libraries**)
-3. 搜索 "YFrobot VC Library"
-4. 点击 **安装**
+### 通过 Arduino 库管理器安装
+
+1. 打开 Arduino IDE。
+2. 进入 **Sketch** -> **Include Library** -> **Manage Libraries**。
+3. 搜索 `YFrobot VC Library`。
+4. 点击安装。
 
 ### 手动安装
-1. 从 [GitHub Releases](https://github.com/yfrobot/YFrobot-VC-Library/releases) 下载最新版本
-2. 解压 ZIP 文件
-3. 将 `Yfrobot-VC-Library` 文件夹复制到 Arduino 的 `libraries` 文件夹
-   - Windows: `Documents/Arduino/libraries/`
-   - macOS: `~/Documents/Arduino/libraries/`
-   - Linux: `~/Arduino/libraries/`
-4. 重启 Arduino IDE
+
+1. 从 [GitHub Releases](https://github.com/yfrobot/YFrobot-VC-Library/releases) 下载最新版本。
+2. 解压 ZIP 文件。
+3. 将 `Yfrobot-VC-Library` 文件夹复制到 Arduino 的 `libraries` 目录。
+4. 重启 Arduino IDE。
 
 ## 硬件连接
 
 ### ESP32
-```
-语音模块      ESP32
+
+```text
+语音模块        ESP32
 -----------    -----
-VCC          3.3V/5V
-GND          GND
-TX           RX (例如 GPIO16)
-RX           TX (例如 GPIO17)
+VCC            3.3V/5V
+GND            GND
+TX             GPIO16 (RX)
+RX             GPIO17 (TX)
 ```
 
-### Arduino Uno (软件串口)
-```
-语音模块      Arduino Uno
------------    ----------
-VCC          5V
-GND          GND
-TX           RX (例如 D11)
-RX           TX (例如 D10)
+### Arduino Uno 软件串口
+
+```text
+语音模块        Arduino Uno
+-----------    -----------
+VCC            5V
+GND            GND
+TX             D11 (RX)
+RX             D10 (TX)
 ```
 
-### Arduino Uno (硬件串口)
+### Arduino Uno 硬件串口
+
+```text
+语音模块        Arduino Uno
+-----------    -----------
+VCC            5V
+GND            GND
+TX             D0 (RX)
+RX             D1 (TX)
 ```
-语音模块      Arduino Uno
------------    ----------
-VCC          5V
-GND          GND
-TX           RX (D0)
-RX           TX (D1)
+
+### Raspberry Pi Pico
+
+```text
+语音模块        Raspberry Pi Pico
+-----------    ------------------
+VCC            3.3V/5V
+GND            GND
+TX             Pico RX（例如 GPIO9）
+RX             Pico TX（例如 GPIO8）
 ```
+
+不同 Pico Arduino 核心对 UART 默认引脚和重映射方式可能略有差异，当前示例默认使用 `Serial1`，并支持像 ESP32 一样在构造函数中传入自定义 RX/TX 引脚。
+
+示例：
+
+```cpp
+YFRP2040HardwareSerial yfvc(&Serial1, 9, 8); // RX, TX
+```
+
+该方式依赖 Pico 所使用的 Arduino core 支持在 `begin()` 前调用 `Serial1.setRX(pin)` 与 `Serial1.setTX(pin)`。
 
 ## 快速开始
 
-### ESP32 示例
+### 1. 语音识别示例
 
 ```cpp
 #include <YFVCLib.h>
 
-const int VC_RX = 16; // ESP32 RX 引脚
-const int VC_TX = 17; // ESP32 TX 引脚
+const int VC_RX = 16;
+const int VC_TX = 17;
 
 YFESP32HardwareSerial yfvc(&Serial2, VC_RX, VC_TX);
 
 void setup() {
   Serial.begin(115200);
-  yfvc.begin(9600); // 与语音模块波特率一致
-  Serial.println("YF 语音模块演示");
-}
-
-void loop() {
-  uint8_t cmd = yfvc.getData();
-  if (cmd != 0x01) { // 0x01 表示无有效数据
-    Serial.print("语音指令: ");
-    Serial.println(cmd);
-    
-    // 处理指令
-    switch(cmd) {
-      case 2:
-        Serial.println("  -> 动作: 打开 LED");
-        break;
-      case 3:
-        Serial.println("  -> 动作: 关闭 LED");
-        break;
-    }
-  }
-  delay(10);
-}
-```
-
-### Arduino Uno (软件串口)
-
-```cpp
-#include <YFVCLib.h>
-#include <SoftwareSerial.h>
-
-SoftwareSerial softSerial(11, 10); // RX, TX
-UnoSoftwareSerial yfvc(&softSerial);
-
-void setup() {
-  Serial.begin(9600);
-  yfvc.begin(9600);
-  Serial.println("YF 语音模块演示");
-}
-
-void loop() {
-  uint8_t cmd = yfvc.getData();
-  if (cmd != 0x01) {
-    Serial.print("语音指令: ");
-    Serial.println(cmd);
-  }
-}
-```
-
-### Arduino Uno (硬件串口)
-
-```cpp
-#include <YFVCLib.h>
-
-UnoHardwareSerial yfvc(&Serial);
-
-void setup() {
-  Serial.begin(9600);
   yfvc.begin(9600);
 }
 
 void loop() {
   uint8_t cmd = yfvc.getData();
   if (cmd != 0x01) {
-    Serial.print("语音指令: ");
+    Serial.print("Voice cmd: ");
     Serial.println(cmd);
   }
 }
 ```
 
-## API 参考
+### 2. 串口播报示例
 
-### 类
-
-#### `YFESP32HardwareSerial` (ESP32)
-ESP32 硬件串口，可配置 RX/TX 引脚。
-
-**构造函数:**
 ```cpp
-YFESP32HardwareSerial(HardwareSerial* serial, int rxPin, int txPin)
+#include <YFVCLib.h>
+
+YFESP32HardwareSerial yfvc(&Serial2, 16, 17);
+
+void setup() {
+  yfvc.begin(9600);
+
+  yfvc.broadcastTemperature(21.15);    // 21.15
+  delay(500);
+  yfvc.broadcastHumidity(30);          // 30%
+  delay(500);
+  yfvc.broadcastDate(2026, 4, 10, 5);  // 2026-04-10，星期 5
+  delay(500);
+  yfvc.broadcastTime(11, 18);          // 11:18
+}
+
+void loop() {
+}
 ```
 
-**参数:**
-- `serial`: HardwareSerial 对象指针（例如 `&Serial1`、`&Serial2`）
-- `rxPin`: RX 引脚编号
-- `txPin`: TX 引脚编号
+## API 说明
 
-#### `UnoHardwareSerial` (AVR)
-Arduino 硬件串口。
+### 传输类
 
-**构造函数:**
-```cpp
-UnoHardwareSerial(HardwareSerial* serial)
+- `YFESP32HardwareSerial(HardwareSerial* serial, int rxPin, int txPin)`
+- `UnoHardwareSerial(HardwareSerial* serial)`
+- `UnoSoftwareSerial(SoftwareSerial* serial)`
+
+### 基础方法
+
+- `begin(unsigned long baud)`
+- `getData()`
+- `sendProtocolCommand(uint8_t command, const uint8_t* payload = NULL, size_t payloadLength = 0)`
+
+### 播报协议方法
+
+- `broadcastTemperature(double value)`
+- `broadcastTemperatureParts(uint8_t integerPart, uint8_t decimal1 = 0, uint8_t decimal2 = 0)`
+- `broadcastHumidity(uint8_t humidityPercent)`
+- `broadcastDate(uint16_t year, uint8_t month, uint8_t day, uint8_t week)`
+- `broadcastTime(uint8_t hour, uint8_t minute)`
+- `broadcastTime(const tm& timeInfo)`
+- `broadcastTime(rtcDateTime)`
+- `broadcastHour(uint8_t hour)`
+- `broadcastDistance(uint32_t distanceValue)`
+- `broadcastNumber(uint32_t numberValue)`
+- `broadcastDecimal(double value)`
+- `broadcastDecimalParts(uint32_t integerPart, uint8_t decimal1, uint8_t decimal2)`
+- `playFixedVoice(YFVCFixedVoice voice)`
+- `startCountdown10s()`
+- `playPresetAudio()`
+
+`broadcastTemperature(15.51)` 与 `broadcastDecimal(18.21)` 会在库内部自动拆分为整数部分和两位小数，再按协议发送。
+
+`broadcastTime(...)` 支持以下几种写法：
+
+- 直接传入小时和分钟，例如 `broadcastTime(11, 18)`
+- 传入标准 `struct tm`
+- 传入带有 `hour()` 和 `minute()` 方法的常见 RTC 时间对象，例如 RTClib 的 `DateTime`
+
+### 固定播报指令枚举
+
+`YFVCFixedVoice` 对应协议中的固定指令，常用项包括：
+
+- `YFVC_FIXED_TEMPERATURE_PREFIX`：`0x09`
+- `YFVC_FIXED_DEGREE`：`0x0A`
+- `YFVC_FIXED_HUMIDITY_PREFIX`：`0x0B`
+- `YFVC_FIXED_CURRENT_DISTANCE`：`0x14`
+- `YFVC_FIXED_MILLIMETER`：`0x15`
+- `YFVC_FIXED_CENTIMETER`：`0x16`
+- `YFVC_FIXED_METER`：`0x17`
+- `YFVC_FIXED_PRESET_AUDIO`：`0x19`
+
+## 协议说明
+
+### 1. 识别输入协议
+
+模块返回的识别数据格式为：
+
+```text
+5A CMD DATA1 DATA2 CHECKSUM
 ```
 
-**参数:**
-- `serial`: HardwareSerial 对象指针（例如 `&Serial`）
+其中 `CHECKSUM` 为前四个字节之和的低 8 位。
 
-#### `UnoSoftwareSerial` (AVR)
-Arduino 软件串口。
+### 2. 播报输出协议
 
-**构造函数:**
-```cpp
-UnoSoftwareSerial(SoftwareSerial* serial)
+主控发送的播报数据格式为：
+
+```text
+AA 55 CMD PAYLOAD... 55 AA
 ```
 
-**参数:**
-- `serial`: SoftwareSerial 对象指针
+示例：
 
-### 方法
+- 温度：`AA 55 01 temp_int dec1 dec2 55 AA`
+- 湿度：`AA 55 02 humidity 55 AA`
+- 日期：`AA 55 03 y1 y2 y3 y4 month day week 55 AA`
+- 时间：`AA 55 04 hour minute 55 AA`
+- 整数：`AA 55 07 b0 b1 b2 b3 55 AA`
+- 小数：`AA 55 08 b0 b1 b2 b3 dec1 dec2 55 AA`
 
-#### `begin(unsigned long baud)`
-初始化串口通信。
+距离、整数、小数的整数部分均采用 4 字节小端格式，即低字节在前，高字节在后。
 
-**参数:**
-- `baud`: 波特率（例如 9600、115200）
+## 示例列表
 
-#### `getData()`
-从串口读取语音指令。
+- `ESP32_Basic`：ESP32 语音识别基础示例
+- `ESP32_OLED`：ESP32 配合 OLED 显示的识别示例
+- `AVR_SoftwareSerial`：Arduino Uno 软件串口识别示例
+- `AVR_HardwareSerial`：Arduino Uno 硬件串口识别示例
+- `ESP32_BroadcastProtocol`：ESP32 播报协议示例
+- `AVR_BroadcastProtocol`：AVR 播报协议示例
+- `Pico_Recognition`：Raspberry Pi Pico 语音识别示例
+- `Pico_BroadcastProtocol`：Raspberry Pi Pico 播报协议示例
 
-**返回值:**
-- `uint8_t`: 指令值
-  - `0x01`: 未收到有效数据
-  - 其他值: 语音指令代码（请参考您的语音模块文档）
-
-## 协议详解
-
-语音模块发送的数据格式如下：
-
-| 字节 | 说明 |
-|------|------|
-| 1    | 帧头 (0x5A) |
-| 2    | 指令代码 |
-| 3    | 数据字节 1 |
-| 4    | 数据字节 2 |
-| 5    | 校验和 (字节1-4之和，取低8位) |
-
-库会自动处理协议解析和校验和验证。
-
-## 示例
-
-库包含多个示例：
-- `ESP32_Basic`: ESP32 基础使用
-- `ESP32_OLED`: ESP32 配合 OLED 显示
-- `AVR_SoftwareSerial`: Arduino Uno 使用软件串口
-- `AVR_HardwareSerial`: Arduino Uno 使用硬件串口
-
-在 Arduino IDE 中通过 **文件** -> **示例** -> **YFrobot VC Library** 打开它们。
+可在 Arduino IDE 中通过 **File** -> **Examples** -> **YFrobot VC Library** 打开。
 
 ## 常见问题
 
-### 无法接收数据
-- 检查接线（TX/RX 应该交叉连接）
-- 验证波特率是否与语音模块设置一致
-- 确保共地连接
+### 识别无数据
 
-### 数据乱码
-- 检查波特率设置
-- 验证 RX/TX 引脚分配
-- 尝试不同的波特率（9600、115200）
+- 检查 TX/RX 是否交叉连接。
+- 检查波特率是否与模块一致。
+- 检查供电与共地是否正常。
 
-### ESP32 问题
-- 确保使用正确的串口（Serial1、Serial2 等）
-- 验证引脚编号对您的 ESP32 开发板有效
-- 检查引脚是否被其他外设占用
+### 播报无响应
 
-## 许可证
-
-本库采用 MIT 许可证。详见 [LICENSE](LICENSE)。
-
-## 贡献
-
-欢迎贡献！请随时提交 Pull Request。
-
-## 支持
-
-- 网站: [www.yfrobot.com.cn](https://www.yfrobot.com.cn)
-- GitHub Issues: [在此报告问题](https://github.com/yfrobot/YFrobot-VC-Library/issues)
+- 确认模块固件支持 V1.0.9 协议表。
+- 确认发送值范围合法，例如月份 `1-12`、小数位 `0-9`。
+- 必要时用串口分析仪核对发送帧。
 
 ## 更新日志
 
-### 版本 1.0.0 (2024-01-20)
-- 首次发布
-- 支持 AVR、ESP32 和 micro:bit 平台
-- 硬件和软件串口实现
-- 内置校验和验证
+### 版本 1.1.0（2026-04-13）
 
-## 致谢
+- 新增 V1.0.9 串口播报协议 API
+- 新增 AVR 与 ESP32 播报协议示例
+- 更新中英文文档与示例说明
 
-由 YFROBOT 开发
+### 版本 1.0.0（2024-01-20）
 
-## 鸣谢
+- 初次发布
+- 支持 AVR、ESP32、micro:bit 平台
+- 支持语音识别串口接收
 
-- U8g2 库用于 OLED 支持
-- Arduino 串口示例的启发
+## 许可证
+
+本库采用 MIT License，详见 [LICENSE](LICENSE)。

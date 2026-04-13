@@ -6,6 +6,9 @@
 #if defined(ARDUINO_ARCH_ESP32)
   #include "ESP32Serial.h"
   #define YFVC_HARDWARE_SERIAL YFESP32HardwareSerial
+#elif defined(ARDUINO_ARCH_RP2040)
+  #include "RP2040Serial.h"
+  #define YFVC_HARDWARE_SERIAL YFRP2040HardwareSerial
 #elif defined(ARDUINO_ARCH_AVR)
   #include "UnoSerial.h"
   #define YFVC_HARDWARE_SERIAL UnoHardwareSerial

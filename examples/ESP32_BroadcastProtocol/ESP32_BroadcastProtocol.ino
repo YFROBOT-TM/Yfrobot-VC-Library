@@ -1,9 +1,16 @@
 #include <YFVCLib.h>
 
+// 语音模块串口接线：
+// 模块 TX -> ESP32 GPIO16
+// 模块 RX -> ESP32 GPIO17
 const int VC_RX_PIN = 16;
 const int VC_TX_PIN = 17;
+
+// 调试串口和模块串口波特率
 const unsigned long DEBUG_BAUD = 115200;
 const unsigned long MODULE_BAUD = 9600;
+
+// 每隔一段时间轮播一条播报指令，便于逐项测试
 const unsigned long DEMO_INTERVAL_MS = 3500;
 const uint8_t DEMO_STEP_COUNT = 14;
 
@@ -22,71 +29,88 @@ void playStep(uint8_t step) {
 
   switch (step) {
     case 0:
-      ok = yfvc.broadcastTemperature(0x15, 0x01, 0x05);
+      // 播报温度：AA 55 01 15 01 05 55 AA
+      // 用户直接填写十进制温度，库内部自动拆成整数和两位小数
+      ok = yfvc.broadcastTemperature(21.15);
       printResult("Temp 21.15", ok);
       break;
 
     case 1:
-      ok = yfvc.broadcastHumidity(0x1E);
+      // 播报湿度：AA 55 02 1E 55 AA
+      // 直接填写十进制湿度值
+      ok = yfvc.broadcastHumidity(30);
       printResult("Humidity 30", ok);
       break;
 
     case 2:
+      // 播报日期：AA 55 03 02 00 02 06 04 0A 05 55 AA
       ok = yfvc.broadcastDate(2026, 4, 10, 5);
       printResult("Date 2026-04-10 week 5", ok);
       break;
 
     case 3:
-      ok = yfvc.broadcastTime(0x0B, 0x12);
+      // 播报时间：AA 55 04 0B 12 55 AA
+      ok = yfvc.broadcastTime(11, 18);
       printResult("Time 11:18", ok);
       break;
 
     case 4:
-      ok = yfvc.broadcastHour(0x0A);
+      // 整点报时：AA 55 05 0A 55 AA
+      ok = yfvc.broadcastHour(10);
       printResult("Hour 10", ok);
       break;
 
     case 5:
+      // 播报距离：AA 55 06 24 00 00 00 55 AA
       ok = yfvc.broadcastDistance(36);
       printResult("Distance 36", ok);
       break;
 
     case 6:
+      // 播报整数：AA 55 07 24 11 00 00 55 AA
       ok = yfvc.broadcastNumber(4388);
       printResult("Number 4388", ok);
       break;
 
     case 7:
-      ok = yfvc.broadcastDecimal(18, 2, 1);
+      // 播报小数：AA 55 08 12 00 00 00 02 01 55 AA
+      // 用户直接填写十进制小数，库内部自动拆分
+      ok = yfvc.broadcastDecimal(18.21);
       printResult("Decimal 18.21", ok);
       break;
 
     case 8:
+      // 固定播报指令 0x09：当前温度是
       ok = yfvc.playFixedVoice(YFVC_FIXED_TEMPERATURE_PREFIX);
       printResult("Fixed 0x09", ok);
       break;
 
     case 9:
+      // 固定播报指令 0x0A：度
       ok = yfvc.playFixedVoice(YFVC_FIXED_DEGREE);
       printResult("Fixed 0x0A", ok);
       break;
 
     case 10:
+      // 固定播报指令 0x0B：当前湿度是百分之
       ok = yfvc.playFixedVoice(YFVC_FIXED_HUMIDITY_PREFIX);
       printResult("Fixed 0x0B", ok);
       break;
 
     case 11:
+      // 固定播报指令 0x14：当前距离
       ok = yfvc.playFixedVoice(YFVC_FIXED_CURRENT_DISTANCE);
       printResult("Fixed 0x14", ok);
       break;
 
     case 12:
+      // 启动 10 秒倒计时：AA 55 18 55 AA
       ok = yfvc.startCountdown10s();
       printResult("Countdown 10s", ok);
       break;
 
     default:
+      // 播放预设音乐：AA 55 19 55 AA
       ok = yfvc.playPresetAudio();
       printResult("Preset audio", ok);
       break;
@@ -97,17 +121,20 @@ void setup() {
   Serial.begin(DEBUG_BAUD);
   yfvc.begin(MODULE_BAUD);
 
+  // 串口输出仅用于观察测试步骤，不参与模块协议通信
   Serial.println();
   Serial.println("YFrobot broadcast protocol demo for ESP32");
   Serial.println("Voice module TX -> GPIO16, RX -> GPIO17");
-  Serial.println("This sketch sends the protocol examples from the V1.0.8 table.");
+  Serial.println("This sketch sends the protocol examples from the V1.0.9 table.");
 
+  // 上电后先发送第一条示例指令
   playStep(demoStep);
   demoStep = (demoStep + 1) % DEMO_STEP_COUNT;
   lastDemoAt = millis();
 }
 
 void loop() {
+  // 定时轮播后续测试项
   if (millis() - lastDemoAt >= DEMO_INTERVAL_MS) {
     playStep(demoStep);
     demoStep = (demoStep + 1) % DEMO_STEP_COUNT;

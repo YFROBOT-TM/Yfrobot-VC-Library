@@ -8,6 +8,7 @@
 
 SerialBaseVC	KEYWORD1
 YFESP32HardwareSerial	KEYWORD1
+YFRP2040HardwareSerial	KEYWORD1
 UnoHardwareSerial	KEYWORD1
 UnoSoftwareSerial	KEYWORD1
 YFMbSoftwareSerial	KEYWORD1
@@ -27,7 +28,9 @@ broadcastHour	KEYWORD2
 broadcastDistance	KEYWORD2
 broadcastNumber	KEYWORD2
 broadcastDecimal	KEYWORD2
+broadcastDecimalParts	KEYWORD2
 broadcastTemperature	KEYWORD2
+broadcastTemperatureParts	KEYWORD2
 broadcastHumidity	KEYWORD2
 playFixedVoice	KEYWORD2
 startCountdown10s	KEYWORD2

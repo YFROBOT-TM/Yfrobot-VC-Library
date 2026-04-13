@@ -4,6 +4,7 @@
 #define SERIAL_BASE_VC_H
 
 #include <Arduino.h>
+#include <time.h>
 
 enum YFVCFixedVoice : uint8_t {
     YFVC_FIXED_TEMPERATURE_PREFIX = 0x09,
@@ -37,7 +38,7 @@ public:
         return 0;
     }
 
-    // Protocol V1.0.8 output frame: AA 55 + command + payload + 55 AA
+    // Protocol V1.0.9 output frame: AA 55 + command + payload + 55 AA
     bool sendProtocolCommand(uint8_t command, const uint8_t* payload = NULL, size_t payloadLength = 0) {
         static const uint8_t kHeader[] = {0xAA, 0x55};
         static const uint8_t kFooter[] = {0x55, 0xAA};
@@ -54,7 +55,21 @@ public:
         return written == (payloadLength + sizeof(kHeader) + sizeof(kFooter) + 1);
     }
 
-    bool broadcastTemperature(uint8_t integerPart, uint8_t decimal1 = 0, uint8_t decimal2 = 0) {
+    // Recommended API: pass temperature like 15.51 and let the library split it.
+    bool broadcastTemperature(double value) {
+        uint32_t integerPart = 0;
+        uint8_t decimal1 = 0;
+        uint8_t decimal2 = 0;
+
+        if (!splitFixed2(value, integerPart, decimal1, decimal2) || integerPart > 100U) {
+            return false;
+        }
+
+        return broadcastTemperatureParts(static_cast<uint8_t>(integerPart), decimal1, decimal2);
+    }
+
+    // Low-level API: direct integer part + two decimal digits.
+    bool broadcastTemperatureParts(uint8_t integerPart, uint8_t decimal1 = 0, uint8_t decimal2 = 0) {
         if (integerPart > 100 || decimal1 > 9 || decimal2 > 9) {
             return false;
         }
@@ -103,6 +118,28 @@ public:
         return sendProtocolCommand(0x04, payload, sizeof(payload));
     }
 
+    // Compatible with standard struct tm.
+    bool broadcastTime(const tm& timeInfo) {
+        if (timeInfo.tm_hour < 0 || timeInfo.tm_hour > 23 ||
+            timeInfo.tm_min < 0 || timeInfo.tm_min > 59) {
+            return false;
+        }
+
+        return broadcastTime(
+            static_cast<uint8_t>(timeInfo.tm_hour),
+            static_cast<uint8_t>(timeInfo.tm_min)
+        );
+    }
+
+    // Compatible with common RTC classes such as RTClib DateTime (hour()/minute()).
+    template <typename TDateTime>
+    bool broadcastTime(const TDateTime& dateTime) {
+        return broadcastTime(
+            static_cast<uint8_t>(dateTime.hour()),
+            static_cast<uint8_t>(dateTime.minute())
+        );
+    }
+
     bool broadcastHour(uint8_t hour) {
         if (hour > 23) {
             return false;
@@ -119,7 +156,21 @@ public:
         return sendUint32Command(0x07, numberValue);
     }
 
-    bool broadcastDecimal(uint32_t integerPart, uint8_t decimal1, uint8_t decimal2) {
+    // Recommended API: pass decimal like 18.21 and let the library split it.
+    bool broadcastDecimal(double value) {
+        uint32_t integerPart = 0;
+        uint8_t decimal1 = 0;
+        uint8_t decimal2 = 0;
+
+        if (!splitFixed2(value, integerPart, decimal1, decimal2)) {
+            return false;
+        }
+
+        return broadcastDecimalParts(integerPart, decimal1, decimal2);
+    }
+
+    // Low-level API: direct integer part + two decimal digits.
+    bool broadcastDecimalParts(uint32_t integerPart, uint8_t decimal1, uint8_t decimal2) {
         if (decimal1 > 9 || decimal2 > 9) {
             return false;
         }
@@ -159,6 +210,21 @@ protected:
             static_cast<uint8_t>((value >> 24) & 0xFF)
         };
         return sendProtocolCommand(command, payload, sizeof(payload));
+    }
+
+    bool splitFixed2(double value, uint32_t& integerPart, uint8_t& decimal1, uint8_t& decimal2) {
+        if (value < 0.0 || value > 4294967295.99) {
+            return false;
+        }
+
+        const double scaledValue = (value * 100.0) + 0.5;
+        const unsigned long long scaled = static_cast<unsigned long long>(scaledValue);
+
+        integerPart = static_cast<uint32_t>(scaled / 100ULL);
+        const uint8_t fraction = static_cast<uint8_t>(scaled % 100ULL);
+        decimal1 = static_cast<uint8_t>(fraction / 10U);
+        decimal2 = static_cast<uint8_t>(fraction % 10U);
+        return true;
     }
 };
 
