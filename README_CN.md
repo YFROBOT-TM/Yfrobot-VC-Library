@@ -152,7 +152,33 @@ void loop() {
 
 - `begin(unsigned long baud)`
 - `getData()`
+- `peekData()`
+- `clearData()`
 - `sendProtocolCommand(uint8_t command, const uint8_t* payload = NULL, size_t payloadLength = 0)`
+
+`getData()` 用于刷新串口识别结果。
+- 当识别到新的语音指令时，返回该指令值，同时把该指令写入缓存。
+- 当没有新的识别结果时，返回 `0x01`，即 `SerialBaseVC::NO_DATA`。
+
+`peekData()` 用于查看当前缓存的指令，不会再次读取串口，适合图形化/积木式编程在同一轮逻辑中多次判断。
+
+`clearData()` 用于清除当前缓存。执行完动作后调用一次，就可以实现“同一条语音只执行一次”。
+
+图形化编程推荐写法：
+
+```cpp
+yfvc.getData();
+
+if (yfvc.peekData() != SerialBaseVC::NO_DATA) {
+  if (yfvc.peekData() == 0x02) {
+    // 处理 0x02 指令
+  } else if (yfvc.peekData() == 0x03) {
+    // 处理 0x03 指令
+  }
+
+  yfvc.clearData();
+}
+```
 
 ### 播报协议方法
 

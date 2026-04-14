@@ -28,8 +28,18 @@ enum YFVCFixedVoice : uint8_t {
 // Base class for YFrobot voice module serial transport.
 class SerialBaseVC {
 public:
+    static const uint8_t NO_DATA = 0x01;
+
     virtual void begin(unsigned long baud) = 0;
     virtual uint8_t getData() = 0;
+
+    uint8_t peekData() const {
+        return _lastData;
+    }
+
+    void clearData() {
+        _lastData = NO_DATA;
+    }
 
     // Default no-op keeps backward compatibility if a custom subclass does not add TX support.
     virtual size_t writeBytes(const uint8_t* data, size_t len) {
@@ -198,10 +208,34 @@ public:
         return sendProtocolCommand(YFVC_FIXED_PRESET_AUDIO);
     }
 
-    SerialBaseVC() {}
+    SerialBaseVC()
+        : _lastData(NO_DATA),
+          _parserState(IDLE),
+          _offset(0),
+          _checksum(0) {}
+
     virtual ~SerialBaseVC() {}
 
 protected:
+    enum ParserState : uint8_t {
+        IDLE,
+        HEADER_5A
+    };
+
+    uint8_t readDataFromStream(Stream& stream) {
+        while (stream.available()) {
+            uint8_t command = NO_DATA;
+            const uint8_t value = static_cast<uint8_t>(stream.read());
+
+            if (parseIncomingByte(value, command)) {
+                _lastData = command;
+                return command;
+            }
+        }
+
+        return NO_DATA;
+    }
+
     bool sendUint32Command(uint8_t command, uint32_t value) {
         const uint8_t payload[] = {
             static_cast<uint8_t>(value & 0xFF),
@@ -226,6 +260,40 @@ protected:
         decimal2 = static_cast<uint8_t>(fraction % 10U);
         return true;
     }
+
+    bool parseIncomingByte(uint8_t value, uint8_t& command) {
+        command = NO_DATA;
+
+        if (_parserState == IDLE) {
+            if (value == 0x5A) {
+                _checksum = value;
+                _offset = 0;
+                _parserState = HEADER_5A;
+            }
+            return false;
+        }
+
+        if (_offset < 3) {
+            _checksum += value;
+            _inBuf[_offset] = value;
+            _offset++;
+            return false;
+        }
+
+        _parserState = IDLE;
+        if ((_checksum & 0xFFU) == value) {
+            command = _inBuf[0];
+            return true;
+        }
+
+        return false;
+    }
+
+    uint8_t _lastData;
+    ParserState _parserState;
+    uint8_t _inBuf[3];
+    uint8_t _offset;
+    uint16_t _checksum;
 };
 
 #endif // SERIAL_BASE_VC_H

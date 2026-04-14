@@ -147,7 +147,33 @@ void loop() {
 
 - `begin(unsigned long baud)`
 - `getData()`
+- `peekData()`
+- `clearData()`
 - `sendProtocolCommand(uint8_t command, const uint8_t* payload = NULL, size_t payloadLength = 0)`
+
+`getData()` refreshes serial recognition data.
+- When a new voice command is recognized, it returns that command value and stores it in the internal cache.
+- When there is no new recognition result, it returns `0x01`, which is `SerialBaseVC::NO_DATA`.
+
+`peekData()` reads the cached command without reading the serial port again. This is useful for graphical or block-based programming where the same command may be checked multiple times in one logic branch.
+
+`clearData()` clears the current cached command. Call it after the action has been handled to make sure the same voice command runs only once.
+
+Recommended pattern for graphical programming:
+
+```cpp
+yfvc.getData();
+
+if (yfvc.peekData() != SerialBaseVC::NO_DATA) {
+  if (yfvc.peekData() == 0x02) {
+    // Handle command 0x02
+  } else if (yfvc.peekData() == 0x03) {
+    // Handle command 0x03
+  }
+
+  yfvc.clearData();
+}
+```
 
 ### Broadcast Helpers
 
@@ -221,14 +247,16 @@ For distance, integer, and decimal integer parts, the 32-bit value is little-end
 
 ## Examples
 
-- `ESP32_Basic`: voice recognition input on ESP32
-- `ESP32_OLED`: voice recognition with OLED display
-- `AVR_SoftwareSerial`: voice recognition input on Arduino Uno
-- `AVR_HardwareSerial`: hardware serial recognition example
-- `ESP32_BroadcastProtocol`: serial broadcast protocol demo for ESP32
-- `AVR_BroadcastProtocol`: serial broadcast protocol demo for AVR
-- `Pico_Recognition`: voice recognition input on Raspberry Pi Pico
-- `Pico_BroadcastProtocol`: serial broadcast protocol demo for Raspberry Pi Pico
+- `ESP32_Basic`: Basic ESP32 voice recognition example
+- `ESP32_GraphicMode`: ESP32 cached-command example for graphical programming
+- `ESP32_OLED`: ESP32 voice recognition with OLED display
+- `AVR_SoftwareSerial`: Arduino Uno voice recognition over SoftwareSerial
+- `AVR_PeekData`: Arduino Uno cached-command example based on `peekData()`
+- `AVR_HardwareSerial`: Arduino Uno voice recognition over HardwareSerial
+- `ESP32_BroadcastProtocol`: ESP32 broadcast protocol example
+- `AVR_BroadcastProtocol`: AVR broadcast protocol example
+- `Pico_Recognition`: Raspberry Pi Pico voice recognition example
+- `Pico_BroadcastProtocol`: Raspberry Pi Pico broadcast protocol example
 
 Open them from Arduino IDE via **File** -> **Examples** -> **YFrobot VC Library**.
 
