@@ -44,11 +44,6 @@ void loop() {
     } else if (yfvc.peekData() == 0x03) {
       // 指令 0x03：熄灭 LED。
       digitalWrite(LED_PIN, LOW);
-    } else {
-      // 其他指令：闪烁一次作为提示。
-      digitalWrite(LED_PIN, HIGH);
-      delay(50);
-      digitalWrite(LED_PIN, LOW);
     }
 
     // 当前指令处理完成后清除缓存，保证只执行一次。
